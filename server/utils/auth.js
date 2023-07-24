@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { ApolloError } = require('apollo-server-express'); // Import ApolloError for handling GraphQL errors
 
 // set token secret and expiration date
 const secret = 'mysecretsshhhhh';
@@ -6,30 +7,27 @@ const expiration = '2h';
 
 module.exports = {
   // function for our authenticated routes
-  authMiddleware: function (req, res, next) {
-    // allows token to be sent via  req.query or headers
-    let token = req.query.token || req.headers.authorization;
+  authMiddleware: function ({ req }) { // Update the function signature to take the `context` object
+    // allows token to be sent via headers
+    let token = req.headers.authorization || ''; // No need to check for token in query for GraphQL
 
-    // ["Bearer", "<tokenvalue>"]
-    if (req.headers.authorization) {
-      token = token.split(' ').pop().trim();
+    if (!token || !token.startsWith('Bearer ')) {
+      throw new ApolloError('Authentication token must be provided in the format: "Bearer <token>"', 'UNAUTHORIZED');
     }
 
+    token = token.split(' ')[1]; // Extract the token part after 'Bearer'
+
     if (!token) {
-      return res.status(400).json({ message: 'You have no token!' });
+      throw new ApolloError('You have no token!', 'UNAUTHORIZED');
     }
 
     // verify token and get user data out of it
     try {
       const { data } = jwt.verify(token, secret, { maxAge: expiration });
-      req.user = data;
+      req.user = data; // Attach the user data to the `req` object
     } catch {
-      console.log('Invalid token');
-      return res.status(400).json({ message: 'invalid token!' });
+      throw new ApolloError('Invalid token!', 'UNAUTHORIZED');
     }
-
-    // send to next endpoint
-    next();
   },
   signToken: function ({ username, email, _id }) {
     const payload = { username, email, _id };

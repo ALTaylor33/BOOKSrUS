@@ -2,7 +2,8 @@ const express = require('express');
 const path = require('path');
 const db = require('./config/connection');
 const routes = require('./routes');
-
+const { ApolloServer } = require('apollo-server-express');
+const apolloServer = require('./graphql/apolloServer');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -18,4 +19,13 @@ app.use(routes);
 
 db.once('open', () => {
   app.listen(PORT, () => console.log(`🌍 Now listening on localhost:${PORT}`));
+});
+
+
+apolloServer.applyMiddleware({ app });
+
+// ... Start the server ...
+const port = process.env.PORT || 4000;
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
 });
